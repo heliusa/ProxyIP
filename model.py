@@ -70,9 +70,9 @@ def database_init():
 if __name__ == "__main__":
     database_init()
    
-    url_xici = [
-            ProxyItem('xici', "http://www.xicidaili.com/nn/%d" % (index + 1))
-            for index in range(3275)
-        ]
+    # url_xici = [
+    #         ProxyItem('xici', "http://www.xicidaili.com/nn/%d" % (index + 1))
+    #         for index in range(3275)
+    #     ]
 
-    logging.info(json.dumps(url_xici, default=lambda obj: obj.__dict__, sort_keys=True, indent=4))
+    # logging.info(json.dumps(url_xici, default=lambda obj: obj.__dict__, sort_keys=True, indent=4))

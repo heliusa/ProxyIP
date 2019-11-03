@@ -144,7 +144,6 @@ class Crawl(object):
     
         if channel == 'xici' or channel == 'kuaidaili' or channel == '66' or channel == '89' or channel == 'yqie' or channel == 'yundaili' :
             tds = soup.find_all("td")
-            logging.info(tds)
             for index, td in enumerate(tds):
                 logging.debug(u"ProxyIP-Crawl:页面处理进度：{}/{}".format(index + 1, len(tds)))
 
@@ -215,7 +214,6 @@ class Crawl(object):
                         item.update({u'country': re.sub(r"\s+|\n+|\t+", "", tds[index + 4].text)})
                         item.update({u'channel': channel})
                         all_ip.append(item)
-                        logging.info(item)
                     else:
                         logging.debug(u"不匹配的项！")
         elif channel == 'quanwangdaili':
