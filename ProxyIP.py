@@ -92,9 +92,8 @@ class Crawl(object):
             ProxyItem('quanwangdaili', 'http://www.goubanjia.com/')
         ]
 
-        URL = url_xici + url_kuaidaili #+ url_66 + url_89 + url_mimi \
-            #+ url_data5u + url_yqie + url_yundaili + url_quanwangdaili
-        URL = url_quanwangdaili
+        URL = url_xici + url_kuaidaili + url_66 + url_89  \
+            + url_data5u + url_yqie + url_yundaili + url_quanwangdaili
         random.shuffle(URL)  # 随机打乱
         return URL
 
