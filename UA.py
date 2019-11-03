@@ -8,6 +8,7 @@
 # @Description: 生成随机请求头，模拟不同浏览器
 
 import random
+import logging
 
 
 class FakeUserAgent(object):
@@ -107,10 +108,7 @@ class FakeUserAgent(object):
             "gzip, deflate, br",
             "Cache-Control":
             "max-age=0",
-            "Connection":
-            "keep-alive",
-            "Host":
-            "blog.csdn.net",
+            "Connection": "keep-alive",
             "Upgrade-Insecure-Requests":
             "1"
         }

@@ -8,11 +8,9 @@
 # @Description: 数据库
 
 import sqlite3
+from peewee import *
 import time
 import logging
-import config
-config.config()
-
 
 class IP_Pool(object):
     """

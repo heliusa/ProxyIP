@@ -17,9 +17,13 @@ from multiprocessing import Process
 from database import IP_Pool
 from UA import FakeUserAgent
 import logging
-import config
-config.config()
+import model
+from macpath import split
 
+class ProxyItem(object):
+    def __init__(self, channel, url):
+        self.channel = channel
+        self.url = url
 
 class Crawl(object):
     '''抓取网页内容获取IP地址保存到数据库中'''
@@ -38,6 +42,7 @@ class Crawl(object):
         self.__PROXY_DATABASE = proxy_database  # 代理访问的IP数据库
         self.__PROXY_TABLE = proxy_table  # 代理访问的IP数据库表
 
+   
     def __URL(self):
         '''
         返回URL列表
@@ -54,44 +59,51 @@ class Crawl(object):
         '''
         URL = []
         url_xici = [
-            "http://www.xicidaili.com/nn/%d" % (index + 1)
+            ProxyItem('xici', "http://www.xicidaili.com/nn/%d" % (index + 1))
             for index in range(3275)
         ]
         url_kuaidaili = [
-            "https://www.kuaidaili.com/free/inha/%d" % (index + 1)
-            for index in range(2367)
+            ProxyItem('kuaidaili', "https://www.kuaidaili.com/free/inha/%d" % (index + 1))
+            for index in range(3127)
         ]
         url_66 = [
-            "http://www.66ip.cn/%d.html" % (index + 1) for index in range(1288)
+            ProxyItem('66', "http://www.66ip.cn/%d.html" % (index + 1)) 
+            for index in range(1288)
         ]
         url_89 = [
-            "http://www.89ip.cn/index_%d.html" % (index + 1)
-            for index in range(9)
+            ProxyItem('89',"http://www.89ip.cn/index_%d.html" % (index + 1))
+            for index in range(31)
         ]
-        url_mimi = [
-            "http://www.mimiip.com/gngao/%d" % (index + 1)
-            for index in range(683)
+        # url_mimi = [
+        #     ProxyItem('mimi',"http://www.mimiip.com/gngao/%d" % (index + 1))
+        #     for index in range(683)
+        # ]
+        url_data5u = [
+            ProxyItem('data5u', 'http://www.data5u.com')
         ]
-        url_data5u = ['http://www.data5u.com/free/gngn/index.shtml']
-        url_yqie = ['http://ip.yqie.com/ipproxy.htm']
+        url_yqie = [
+            ProxyItem('yqie', 'http://ip.yqie.com/ipproxy.htm')
+        ]
         url_yundaili = [
-            'http://www.ip3366.net/?stype=1&page=%d' % (index + 1)
-            for index in range(7)
+            ProxyItem('yundaili', 'http://www.ip3366.net/?stype=1&page=%d' % (index + 1))
+            for index in range(10)
         ]
-        url_quanwangdaili = ['http://www.goubanjia.com/']
+        url_quanwangdaili = [
+            ProxyItem('quanwangdaili', 'http://www.goubanjia.com/')
+        ]
 
-        URL = url_xici + url_kuaidaili + url_66 + url_89 + url_mimi \
-            + url_data5u + url_yqie + url_yundaili + url_quanwangdaili
+        URL = url_xici + url_kuaidaili #+ url_66 + url_89 + url_mimi \
+            #+ url_data5u + url_yqie + url_yundaili + url_quanwangdaili
+        URL = url_quanwangdaili
         random.shuffle(URL)  # 随机打乱
         return URL
 
-    def __proxies(self, database_name, table_name):
+    def __proxies(self):
         '''构造代理IP,需要提供代理IP保存的数据库名称和表名'''
-        ip = IP_Pool(database_name, table_name).pull(
-            random_flag=True, re_try_times=self.__RETRY_TIMES)
-        if ip:
-            IP = str(ip[0]) + ":" + str(ip[1])
-            return {"http": "http://" + IP}
+        item = model.ProxyIp.select().where(model.ProxyIp.status == 1).order_by('random()').limit(1).get()
+        if item:
+            IP = str(item.ip) + ":" + str(item.port)
+            return {"http": str(item.protocol) + "://" + IP}
         else:
             return False
 
@@ -124,59 +136,156 @@ class Crawl(object):
             logging.error(u"ProxyIP-Crawl:HTML解码出错，跳过！")
             return None
 
-    def __parse(self, html):
+    def __parse(self, channel, html):
         '''解析HTML获取IP地址'''
         if html is None:
             return
         all_ip = []
         soup = BeautifulSoup(html, "lxml")
-        tds = soup.find_all("td")
-        for index, td in enumerate(tds):
-            logging.debug(u"ProxyIP-Crawl:页面处理进度：{}/{}".format(
-                index + 1, len(tds)))
-            if re.match(r"^\d+\.\d+\.\d+\.\d+$",
-                        re.sub(r"\s+|\n+|\t+", "", td.text)):
-                item = []
-                item.append(re.sub(r"\s+|\n+|\t+", "", td.text))
-                item.append(re.sub(r"\s+|\n+|\t+", "", tds[index + 1].text))
-                item.append(re.sub(r"\s+|\n+|\t+", "", tds[index + 2].text))
-                item.append(re.sub(r"\s+|\n+|\t+", "", tds[index + 3].text))
-                item.append(re.sub(r"\s+|\n+|\t+", "", tds[index + 4].text))
-                all_ip.append(item)
-            else:
-                logging.debug(u"不匹配的项！")
+    
+        if channel == 'xici' or channel == 'kuaidaili' or channel == '66' or channel == '89' or channel == 'yqie' or channel == 'yundaili' :
+            tds = soup.find_all("td")
+            logging.info(tds)
+            for index, td in enumerate(tds):
+                logging.debug(u"ProxyIP-Crawl:页面处理进度：{}/{}".format(index + 1, len(tds)))
+
+                fields = {
+                    'xici': {
+                        'ip' : 1,
+                        'port': 2,
+                        'address': 3,
+                        'type': 4,
+                        'protocol': 5
+                    },
+                    'kuaidaili': {
+                        'ip' : 0,
+                        'port': 1,
+                        'address': 4,
+                        'type': 2,
+                        'protocol': 3
+                    },
+                    '66' : {
+                        'ip' : 0,
+                        'port': 1,
+                        'address': 2,
+                        'type': 3
+                    },
+                    '89':  {
+                        'ip' : 0,
+                        'port': 1,
+                        'address': 2,
+                    },
+                    'yqie':  {
+                        'ip' : 0,
+                        'port': 1,
+                        'address': 2,
+                        'type': 3,
+                        'protocol': 4
+                    },
+                    'yundaili': {
+                        'ip' : 0,
+                        'port': 1,
+                        'address': 5,
+                        'type': 2,
+                        'protocol': 3
+                    },
+                }
+                if re.match(r"^\d+\.\d+\.\d+\.\d+$", re.sub(r"\s+|\n+|\t+", "", td.text)):
+                    item = {}
+                    for key in fields[channel]:
+                        pos = fields[channel][key]
+                        item.update({key: re.sub(r"\s+|\n+|\t+", "", tds[index + pos].text)})
+                    item.update({u'channel': channel})
+                    all_ip.append(item)
+                else:
+                    logging.debug(u"不匹配的项！")
+        elif channel == 'data5u':
+            wlist = soup.find("div", {'class': 'wlist'})
+            if wlist:
+                tds = wlist.find_all('ul')
+                for index, td in enumerate(tds):
+                    logging.debug(u"ProxyIP-Crawl:页面处理进度：{}/{}".format(index + 1, len(tds)))
+                    if re.match(r"^\d+\.\d+\.\d+\.\d+$",
+                                re.sub(r"\s+|\n+|\t+", "", td.text)):
+                        item = {}
+                        item.update({u'ip': re.sub(r"\s+|\n+|\t+", "", td.text)})
+                        item.update({u'port': re.sub(r"\s+|\n+|\t+", "", tds[index + 1].text)})
+                        item.update({u'address': re.sub(r"\s+|\n+|\t+", "", tds[index + 5].text)})
+                        item.update({u'type': re.sub(r"\s+|\n+|\t+", "", tds[index + 2].text)})
+                        item.update({u'protocol': re.sub(r"\s+|\n+|\t+", "", tds[index + 3].text)})
+                        item.update({u'country': re.sub(r"\s+|\n+|\t+", "", tds[index + 4].text)})
+                        item.update({u'channel': channel})
+                        all_ip.append(item)
+                        logging.info(item)
+                    else:
+                        logging.debug(u"不匹配的项！")
+        elif channel == 'quanwangdaili':
+            tds = soup.find('table').find_all("td")
+            for index, td in enumerate(tds):
+
+                logging.debug(u"ProxyIP-Crawl:页面处理进度：{}/{}".format(index + 1, len(tds)))
+                if re.match(r"^(\d+\.+){3,}(\d+\.*){1,}\:(\d+)",
+                            re.sub(r"\s+|\n+|\t+", "", td.text)):
+                    item = {}
+                    ip = ''
+                    for span in td.find_all(['span', 'div']):
+                        if not span.has_attr('class'):
+                            ip = ip + str(span.get_text())
+
+                    if not re.match(r"^\d+\.\d+\.\d+\.\d+$",  ip):
+                        continue
+
+                    port = td.find('span', {'class': 'port'})
+                    portClass = port.get('class')
+                    if len(portClass) <2:
+                        continue
+
+                 
+                    realEncrypt = portClass[1]
+                    #logging.info(realEncrypt)
+                    encryptIndex = []
+                    for i in range(len(realEncrypt)):
+                        encryptIndex.append(str('ABCDEFGHIZ'.index(realEncrypt[i])))
+                    realPort = int(''.join(encryptIndex)) >> 0x3
+                    logging.info(realPort)
+
+                    item.update({u'ip': re.sub(r"\s+|\n+|\t+", "", ip)})
+                    item.update({u'port': re.sub(r"\s+|\n+|\t+", "", str(realPort))})
+                    item.update({u'address': re.sub(r"\s+|\n+|\t+", "", tds[index + 3].text)})
+                    item.update({u'type': re.sub(r"\s+|\n+|\t+", "", tds[index + 1].text)})
+                    item.update({u'protocol': re.sub(r"\s+|\n+|\t+", "",  str.upper(tds[index + 2].get_text().strip().encode('utf-8')))})
+                    item.update({u'channel': channel})
+                    all_ip.append(item)
+                else:
+                    logging.debug(u"不匹配的项！")
         return all_ip
 
-    def crawl(self, url, headers, proxies):
+    def crawl(self, proxyItem, headers, proxies):
         '''抓取IP并保存'''
-        html = self.__crawl(url, headers, proxies=proxies)
+        html = self.__crawl(proxyItem.url, headers, proxies=proxies)
         if html is None:
             return
-        ip = self.__parse(html)
-        if ip is None or len(ip) < 1:
+        ipList = self.__parse(proxyItem.channel, html)
+        if ipList is None or len(ipList) < 1:
             return
-        if len(ip) == 1:
-            IP_Pool(self.__DATABASE_NAME, self.__ALL_IP_TABLE_NAME).push([ip])
+        if len(ipList) == 1:
+            model.ProxyIp.insert(**ipList).upsert().execute()
         else:
-            IP_Pool(self.__DATABASE_NAME, self.__ALL_IP_TABLE_NAME).push(ip)
+            with model.database.atomic():
+                model.ProxyIp.insert_many(ipList).upsert().execute()
 
     def multiple_crawl(self, thread_num=10, sleep_time=15 * 60):
         '''多线程抓取'''
         count = 0
         while True:
             count += 1
-            logging.info(u"ProxyIP-Crawl:开始第{}轮抓取,当前url数：{}".format(
-                count, len(self.__URLs)))
-            IP_NUM_A = len(
-                IP_Pool(self.__DATABASE_NAME, self.__ALL_IP_TABLE_NAME).pull(
-                    re_try_times=self.__RETRY_TIMES))
+            logging.info(u"ProxyIP-Crawl:开始第{}轮抓取,当前url数：{}".format(count, len(self.__URLs)))
             cnt = 0
             st = time.time()
             while cnt < len(self.__URLs):
                 pool = []
                 if self.__PROXIES_FLAG:
-                    proxies = self.__proxies(self.__PROXY_DATABASE,
-                                             self.__PROXY_TABLE)
+                    proxies = self.__proxies()
                 else:
                     proxies = False
                 for i in range(thread_num):
@@ -186,10 +295,11 @@ class Crawl(object):
                     headers = FakeUserAgent().random_headers()
                     th = threading.Thread(
                         target=self.crawl, args=(url, headers, proxies))
+                    th.setDaemon(True)
                     pool.append(th)
                     logging.info(
                         u"ProxyIP-Crawl:抓取URL：{}\t 进度：{}/{}\t{:.2f}%".format(
-                            url, cnt + 1, len(self.__URLs),
+                            url.url, cnt + 1, len(self.__URLs),
                             (cnt + 1) / len(self.__URLs) * 100))
                     th.start()
                     time.sleep(2 * random.random())  # 随机休眠，均值：0.5秒
@@ -197,12 +307,8 @@ class Crawl(object):
                 for th in pool:
                     th.join()
             ed = time.time()
-            IP_NUM_B = len(
-                IP_Pool(self.__DATABASE_NAME, self.__ALL_IP_TABLE_NAME).pull(
-                    re_try_times=self.__RETRY_TIMES))
             logging.info(
-                u"ProxyIP-Crawl:第{}轮抓取完成,耗时：{:.2f}秒，共计抓取到IP：{}条，当前IP池中IP数：{}条".
-                format(count, ed - st, IP_NUM_B - IP_NUM_A, IP_NUM_B))
+                u"ProxyIP-Crawl:第{}轮抓取完成,耗时：{:.2f}秒". format(count, ed - st))
             st = time.time()
             while time.time() - st < sleep_time:
                 logging.info(
@@ -211,7 +317,7 @@ class Crawl(object):
                 time.sleep(5)
 
     def run(self):
-        self.multiple_crawl()
+        self.multiple_crawl(1)
 
 
 class Validation(object):
@@ -365,11 +471,11 @@ def main():
     crawl = Crawl()
     validation = Validation()
     p1 = Process(target=crawl.run)
-    p2 = Process(target=validation.run)
+    # p2 = Process(target=validation.run)
     p1.start()
-    p2.start()
+    # p2.start()
     p1.join()
-    p2.join()
+    # p2.join()
 
 
 if __name__ == "__main__":
