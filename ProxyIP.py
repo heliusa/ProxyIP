@@ -32,17 +32,10 @@ class Crawl(object):
 
     def __init__(self,
                  retry_times=10,
-                 proxy_flag=False,
-                 proxy_database=None,
-                 proxy_table=None,
-                 database_name="ALL_IP.db"):
+                 proxy_flag=False):
         self.__URLs = self.__URL()  # 访问的URL列表
-        self.__ALL_IP_TABLE_NAME = "all_ip_table"  # 数据库表名称
-        self.__DATABASE_NAME = database_name  # 数据库名称
         self.__RETRY_TIMES = retry_times  # 数据库访问重试次数
         self.__PROXIES_FLAG = proxy_flag  # 是否使用代理访问
-        self.__PROXY_DATABASE = proxy_database  # 代理访问的IP数据库
-        self.__PROXY_TABLE = proxy_table  # 代理访问的IP数据库表
 
    
     def __URL(self):
@@ -101,10 +94,9 @@ class Crawl(object):
 
     def __proxies(self):
         '''构造代理IP,需要提供代理IP保存的数据库名称和表名'''
-        item = model.ProxyIp.select().where(model.ProxyIp.status == 1).order_by('random()').limit(1).get()
-        if item:
-            IP = str(item.ip) + ":" + str(item.port)
-            return {"http": str(item.source_protocol) + "://" + IP}
+        ip = model.ProxyIp.select().where(model.ProxyIp.status == 1).order_by('random()').limit(1).get()
+        if ip:
+            return ip.getProxies()
         else:
             return False
 
@@ -244,7 +236,6 @@ class Crawl(object):
                     for i in range(len(realEncrypt)):
                         encryptIndex.append(str('ABCDEFGHIZ'.index(realEncrypt[i])))
                     realPort = int(''.join(encryptIndex)) >> 0x3
-                    logging.info(realPort)
 
                     item.update({u'ip': re.sub(r"\s+|\n+|\t+", "", ip)})
                     item.update({u'port': re.sub(r"\s+|\n+|\t+", "", str(realPort))})
@@ -293,6 +284,8 @@ class Crawl(object):
                     proxies = self.__proxies()
                 else:
                     proxies = False
+                
+                #logging.info(proxies)
                 for i in range(thread_num):
                     if cnt >= len(self.__URLs):
                         break
@@ -479,7 +472,7 @@ class Validation(object):
 
 def main():
     # 初始化
-    crawl = Crawl()
+    crawl = Crawl(proxy_flag=True)
     validation = Validation()
   
     p2 = Process(target=validation.run)
