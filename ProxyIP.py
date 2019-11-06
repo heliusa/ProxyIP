@@ -329,7 +329,7 @@ class Validation(object):
     '''校验IP有效性'''
 
     def __init__(self):
-        self.__URL = "http://httpbin.org/get"
+        self.__URL = "http://172.22.39.108:33005/get"
         self.__RETRY_TIMES = 10  # 数据库访问重试次数
 
     def __check_ip_anonumous(self, ip):
@@ -342,14 +342,19 @@ class Validation(object):
             logging.debug(u"ProxyIP-Validation:非高匿IP：{}".format(IP))
             return False
 
-    def __check_ip_validation(self, ip, metadata = {}, moduleName = 'ProxyIP-Validation'):
+    def __check_ip_validation(self, ip, metadata = {}, moduleName = 'ProxyIP-Validation', is_filter = False):
         '''校验IP地址有效性'''
         try:
             IP = ip.getProxyIP()
         except Exception:
             logging.info(u"{}:IP地址格式不正确!".format(moduleName))
             return False
-        re_conn_time = 2
+        
+        if is_filter:
+            re_conn_time = 2
+        else:
+            is_filter = 5
+
         logging.info(u"{}:校验IP地址有效性：{}".format(moduleName, IP))
         proxies = ip.getProxies()
         headers = FakeUserAgent().random_headers()
@@ -391,7 +396,7 @@ class Validation(object):
         '''校验有效IP池中的IP有效性，无效则删除'''
         now =  time.strftime('%Y-%m-%d %H:%M:%S')
         metadata = {}
-        if not self.__check_ip_validation(ip, metadata, moduleName):
+        if not self.__check_ip_validation(ip, metadata, moduleName, is_filter):
             if is_filter:
                 ip.status = 2
             else:
@@ -403,6 +408,7 @@ class Validation(object):
             ip.validdate = now
             ip.die_time = now
             ip.fail = ip.fail + 1
+            ip.updated_at = now
             ip.save()
         else:
             for k in metadata:
@@ -415,19 +421,21 @@ class Validation(object):
                 ip.alive_first = now
             ip.alive_near = now
             ip.fail = 0
+            ip.updated_at = now
             ip.save()
 
     def multiple_validation(self, is_filter = False, thread_num=10, sleep=15 * 60):
         '''定时校验有效IP池里的IP，无效的删除'''
         logging.info("is_filter:" + str(is_filter))
-        if is_filter:
-            moduleName = 'ProxyIP-Filter'
-            IPs = model.ProxyIp.select().where(model.ProxyIp.status == 0)
-        else:
-            moduleName = 'ProxyIP-Validation'
-            IPs = model.ProxyIp.select().where(model.ProxyIp.status == 1 or (model.ProxyIp.status == 3 and model.ProxyIp.fail < 50))
         count = 0
         while True:
+            if is_filter:
+                moduleName = 'ProxyIP-Filter'
+                IPs = model.ProxyIp.select().where(model.ProxyIp.status == 0)
+            else:
+                moduleName = 'ProxyIP-Validation'
+                IPs = model.ProxyIp.select().where(model.ProxyIp.status == 1 or (model.ProxyIp.status == 3 and model.ProxyIp.fail < 50))
+                
             count += 1
             logging.info(u"{}:第{}次校验，IP数：{}".format(
                 moduleName, count, len(IPs)))
