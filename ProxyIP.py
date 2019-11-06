@@ -113,6 +113,9 @@ class Crawl(object):
                 break
             except Exception:
                 response = None
+                if proxies:
+                    #发生异常的时候，切换代理
+                    proxies = self.__proxies()
                 continue
         if response is None:
             logging.error(u"ProxyIP-Crawl:请求url出错：%s" % url)
