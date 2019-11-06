@@ -322,7 +322,7 @@ class Crawl(object):
                 time.sleep(5)
 
     def run(self):
-        self.multiple_crawl(3)
+        self.multiple_crawl(3, 60 * 60 * 3)
 
 
 class Validation(object):
