@@ -268,7 +268,11 @@ class Crawl(object):
         
         for ip in ipList:
             #logging.info(ip)
-            model.ProxyIp.insert(**ip).upsert().execute()
+            try:
+                model.ProxyIp.insert(**ip).upsert().execute()
+            except:
+                logging.error("crawl save error: ")
+                logging.error(ip)
         # if len(ipList) == 1:
         #     model.ProxyIp.insert(**ipList).upsert().execute()
         # else:
