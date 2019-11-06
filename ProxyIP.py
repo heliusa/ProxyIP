@@ -19,6 +19,8 @@ from UA import FakeUserAgent
 import logging
 import model
 from macpath import split
+import datetime
+import json
 
 class ProxyItem(object):
     def __init__(self, channel, url):
@@ -102,7 +104,7 @@ class Crawl(object):
         item = model.ProxyIp.select().where(model.ProxyIp.status == 1).order_by('random()').limit(1).get()
         if item:
             IP = str(item.ip) + ":" + str(item.port)
-            return {"http": str(item.protocol) + "://" + IP}
+            return {"http": str(item.source_protocol) + "://" + IP}
         else:
             return False
 
@@ -152,21 +154,21 @@ class Crawl(object):
                         'ip' : 1,
                         'port': 2,
                         'address': 3,
-                        'type': 4,
-                        'protocol': 5
+                        'source_type': 4,
+                        'source_protocol': 5
                     },
                     'kuaidaili': {
                         'ip' : 0,
                         'port': 1,
                         'address': 4,
-                        'type': 2,
-                        'protocol': 3
+                        'source_type': 2,
+                        'source_protocol': 3
                     },
                     '66' : {
                         'ip' : 0,
                         'port': 1,
                         'address': 2,
-                        'type': 3
+                        'source_type': 3
                     },
                     '89':  {
                         'ip' : 0,
@@ -177,15 +179,15 @@ class Crawl(object):
                         'ip' : 0,
                         'port': 1,
                         'address': 2,
-                        'type': 3,
-                        'protocol': 4
+                        'source_type': 3,
+                        'source_protocol': 4
                     },
                     'yundaili': {
                         'ip' : 0,
                         'port': 1,
                         'address': 5,
-                        'type': 2,
-                        'protocol': 3
+                        'source_type': 2,
+                        'source_protocol': 3
                     },
                 }
                 if re.match(r"^\d+\.\d+\.\d+\.\d+$", re.sub(r"\s+|\n+|\t+", "", td.text)):
@@ -209,8 +211,8 @@ class Crawl(object):
                         item.update({u'ip': re.sub(r"\s+|\n+|\t+", "", td.text)})
                         item.update({u'port': re.sub(r"\s+|\n+|\t+", "", tds[index + 1].text)})
                         item.update({u'address': re.sub(r"\s+|\n+|\t+", "", tds[index + 5].text)})
-                        item.update({u'type': re.sub(r"\s+|\n+|\t+", "", tds[index + 2].text)})
-                        item.update({u'protocol': re.sub(r"\s+|\n+|\t+", "", tds[index + 3].text)})
+                        item.update({u'source_type': re.sub(r"\s+|\n+|\t+", "", tds[index + 2].text)})
+                        item.update({u'source_protocol': re.sub(r"\s+|\n+|\t+", "", tds[index + 3].text)})
                         item.update({u'country': re.sub(r"\s+|\n+|\t+", "", tds[index + 4].text)})
                         item.update({u'channel': channel})
                         all_ip.append(item)
@@ -237,9 +239,7 @@ class Crawl(object):
                     if len(portClass) <2:
                         continue
 
-                 
                     realEncrypt = portClass[1]
-                    #logging.info(realEncrypt)
                     encryptIndex = []
                     for i in range(len(realEncrypt)):
                         encryptIndex.append(str('ABCDEFGHIZ'.index(realEncrypt[i])))
@@ -249,8 +249,8 @@ class Crawl(object):
                     item.update({u'ip': re.sub(r"\s+|\n+|\t+", "", ip)})
                     item.update({u'port': re.sub(r"\s+|\n+|\t+", "", str(realPort))})
                     item.update({u'address': re.sub(r"\s+|\n+|\t+", "", tds[index + 3].text)})
-                    item.update({u'type': re.sub(r"\s+|\n+|\t+", "", tds[index + 1].text)})
-                    item.update({u'protocol': re.sub(r"\s+|\n+|\t+", "",  str.upper(tds[index + 2].get_text().strip().encode('utf-8')))})
+                    item.update({u'source_type': re.sub(r"\s+|\n+|\t+", "", tds[index + 1].text)})
+                    item.update({u'source_protocol': re.sub(r"\s+|\n+|\t+", "",  str.upper(tds[index + 2].get_text().strip().encode('utf-8')))})
                     item.update({u'channel': channel})
                     all_ip.append(item)
                 else:
@@ -265,11 +265,15 @@ class Crawl(object):
         ipList = self.__parse(proxyItem.channel, html)
         if ipList is None or len(ipList) < 1:
             return
-        if len(ipList) == 1:
-            model.ProxyIp.insert(**ipList).upsert().execute()
-        else:
-            with model.database.atomic():
-                model.ProxyIp.insert_many(ipList).upsert().execute()
+        
+        for ip in ipList:
+            #logging.info(ip)
+            model.ProxyIp.insert(**ip).upsert().execute()
+        # if len(ipList) == 1:
+        #     model.ProxyIp.insert(**ipList).upsert().execute()
+        # else:
+        #     with model.database.atomic():
+        #         model.ProxyIp.insert_many(ipList).upsert().execute()
 
     def multiple_crawl(self, thread_num=10, sleep_time=15 * 60):
         '''多线程抓取'''
@@ -297,7 +301,7 @@ class Crawl(object):
                     logging.info(
                         u"ProxyIP-Crawl:抓取URL：{}\t 进度：{}/{}\t{:.2f}%".format(
                             url.url, cnt + 1, len(self.__URLs),
-                            (cnt + 1) / len(self.__URLs) * 100))
+                            (cnt + 1) / float(len(self.__URLs)) * 100))
                     th.start()
                     time.sleep(2 * random.random())  # 随机休眠，均值：0.5秒
                     cnt += 1
@@ -314,39 +318,36 @@ class Crawl(object):
                 time.sleep(5)
 
     def run(self):
-        self.multiple_crawl(1)
+        self.multiple_crawl(3)
 
 
 class Validation(object):
     '''校验IP有效性'''
 
-    def __init__(self, all_ip_database="ALL_IP.db", ip_database="IP.db"):
+    def __init__(self):
         self.__URL = "http://httpbin.org/get"
-        self.__VALID_IP_TABLE_NAME = "ip_table"
-        self.__ALL_IP_TABLE_NAME = "all_ip_table"
-        self.__ALL_IP_DATABASE = all_ip_database
-        self.__IP_DATABASE = ip_database
         self.__RETRY_TIMES = 10  # 数据库访问重试次数
 
     def __check_ip_anonumous(self, ip):
         '''检验IP是否高匿名'''
-        logging.info(u"ProxyIP-Validation:校验IP是否高匿：{}".format(ip[0]))
-        if "高匿" in str(ip):
+        IP = ip.getProxyIP()
+        logging.info(u"ProxyIP-Validation:校验IP是否高匿：{}".format(IP))
+        if "高匿" in str(ip.type):
             return True
         else:
-            logging.debug(u"ProxyIP-Validation:非高匿IP：{}".format(ip[0]))
+            logging.debug(u"ProxyIP-Validation:非高匿IP：{}".format(IP))
             return False
 
-    def __check_ip_validation(self, ip):
+    def __check_ip_validation(self, ip, metadata = {}, moduleName = 'ProxyIP-Validation'):
         '''校验IP地址有效性'''
         try:
-            IP = str(ip[0]) + ":" + str(ip[1])
+            IP = ip.getProxyIP()
         except Exception:
-            logging.info(u"ProxyIP-Validation:IP地址格式不正确!")
+            logging.info(u"{}:IP地址格式不正确!".format(moduleName))
             return False
         re_conn_time = 2
-        logging.info(u"ProxyIP-Validation:校验IP地址有效性：{}".format(IP))
-        proxies = {"http": "http://" + IP}
+        logging.info(u"{}:校验IP地址有效性：{}".format(moduleName, IP))
+        proxies = ip.getProxies()
         headers = FakeUserAgent().random_headers()
         for i in range(re_conn_time):
             try:
@@ -355,80 +356,77 @@ class Validation(object):
                     proxies=proxies,
                     headers=headers,
                     timeout=5)
+
+                try:
+                    if response.status_code != 200:
+                        response = None
+                        continue
+
+                    content = json.loads(response.content)
+                    if content['headers'].has_key('Cdn-Src-Ip'):
+                        metadata.update({u'type': '普通'}) #还不知道怎么判断透明和普通匿名代理
+                    else:
+                        metadata.update({u'type': '高匿'})
+
+                    metadata.update({u'speed': str(int(response.elapsed.total_seconds() * 1000))})
+
+                except Exception, e1:
+                    logging.info(e1)
+                    continue
                 break
-            except Exception:
+            except Exception, ex:
+                logging.info(ex)
                 response = None
                 continue
         if response is None:
-            logging.error(u"ProxyIP-Validation:请求校验IP的网络错误！")
+            logging.error(u"{}:请求校验IP的网络错误！".format(moduleName))
             return False
         return True
 
-    def __filter_ip(self, ip):
-        '''验证数据库中的IP地址是否有效,校验后删除'''
-        if self.__check_ip_validation(ip) and self.__check_ip_anonumous(ip):
-            IP_Pool(self.__IP_DATABASE, self.__VALID_IP_TABLE_NAME).push(
-                [ip], re_try_times=self.__RETRY_TIMES)
-        # 校验后删除
-        IP_Pool(self.__ALL_IP_DATABASE, self.__ALL_IP_TABLE_NAME).delete(
-            IP=ip, re_try_times=self.__RETRY_TIMES)
-
-    def multiple_filter(self, thread_num=10, sleep=15 * 60):
-        '''多线程验证'''
-        IPs = IP_Pool(
-            self.__ALL_IP_DATABASE,
-            self.__ALL_IP_TABLE_NAME).pull(re_try_times=self.__RETRY_TIMES)
-        count = 0
-        while True:
-            count += 1
-            st = time.time()
-            logging.info(u"ProxyIP-Validation:第{}轮验证开始，共计需验证IP:{} 条".format(
-                count, len(IPs)))
-            cnt = 0
-            while cnt < len(IPs):
-                pool = []
-                for i in range(thread_num):
-                    if cnt >= len(IPs):
-                        break
-                    logging.info(
-                        u"ProxyIP-Validation:校验进度：{}/{}\t{:.2f}%".format(
-                            cnt, len(IPs), cnt / len(IPs) * 100))
-                    th = threading.Thread(
-                        target=self.__filter_ip, args=(IPs[cnt], ))
-                    th.start()
-                    time.sleep(2 * random.random())
-                    pool.append(th)
-                    cnt += 1
-                for th in pool:
-                    th.join()
-            ed = time.time()
-            IP = IP_Pool(self.__IP_DATABASE, self.__VALID_IP_TABLE_NAME).pull(
-                re_try_times=self.__RETRY_TIMES)
-            logging.info(
-                u"ProxyIP-Validation:第{}轮验证结束，耗时：{:.2f}\t共计验证IP:{}条\t当前IP池中有效IP:{}条".
-                format(count, ed - st, len(IPs), len(IP)))
-            st = time.time()
-            while time.time() - st < sleep:
-                logging.info(u"ProxyIP-Validation:休眠倒计时：{:.2f}秒".format(
-                    sleep - time.time() + st))
-                time.sleep(5)
-
-    def __validation(self, ip):
+    def __validation(self, ip, is_filter, moduleName):
         '''校验有效IP池中的IP有效性，无效则删除'''
-        if not self.__check_ip_validation(ip):
-            IP_Pool(self.__IP_DATABASE, self.__VALID_IP_TABLE_NAME).delete(
-                IP=ip, re_try_times=self.__RETRY_TIMES)
+        now =  time.strftime('%Y-%m-%d %H:%M:%S')
+        metadata = {}
+        if not self.__check_ip_validation(ip, metadata, moduleName):
+            if is_filter:
+                ip.status = 2
+            else:
+                if ip.fail < 50:
+                    ip.status = 3
+                else:
+                    ip.status = 2
 
-    def multiple_validation(self, thread_num=20, sleep=15 * 60):
+            ip.validdate = now
+            ip.die_time = now
+            ip.fail = ip.fail + 1
+            ip.save()
+        else:
+            for k in metadata:
+                setattr(ip, k, metadata[k])
+           
+            ip.status = 1
+            ip.validdate = now
+            ip.die_time = None
+            if ip.alive_first == None:
+                ip.alive_first = now
+            ip.alive_near = now
+            ip.fail = 0
+            ip.save()
+
+    def multiple_validation(self, is_filter = False, thread_num=10, sleep=15 * 60):
         '''定时校验有效IP池里的IP，无效的删除'''
-        IPs = IP_Pool(
-            self.__IP_DATABASE,
-            self.__VALID_IP_TABLE_NAME).pull(re_try_times=self.__RETRY_TIMES)
+        logging.info("is_filter:" + str(is_filter))
+        if is_filter:
+            moduleName = 'ProxyIP-Filter'
+            IPs = model.ProxyIp.select().where(model.ProxyIp.status == 0)
+        else:
+            moduleName = 'ProxyIP-Validation'
+            IPs = model.ProxyIp.select().where(model.ProxyIp.status == 1 or (model.ProxyIp.status == 3 and model.ProxyIp.fail < 50))
         count = 0
         while True:
             count += 1
-            logging.info(u"ProxyIP-Validation:第{}次校验，IP数：{}".format(
-                count, len(IPs)))
+            logging.info(u"{}:第{}次校验，IP数：{}".format(
+                moduleName, count, len(IPs)))
             cnt = 0
             while cnt < len(IPs):
                 pool = []
@@ -436,27 +434,26 @@ class Validation(object):
                     if cnt >= len(IPs):
                         break
                     logging.info(
-                        u"ProxyIP-Validation:校验进度：{}/{}\t{:.2f}%".format(
-                            cnt, len(IPs), cnt / len(IPs) * 100))
+                        u"{}:校验进度：{}/{}\t{:.2f}%".format(
+                            moduleName,cnt, len(IPs), cnt / float(len(IPs)) * 100))
                     th = threading.Thread(
-                        target=self.__validation, args=(IPs[cnt], ))
+                        target=self.__validation, args=(IPs[cnt], is_filter, moduleName))
                     th.start()
                     time.sleep(2 * random.random())
                     pool.append(th)
                     cnt += 1
                 for th in pool:
                     th.join()
-            ips = IP_Pool(self.__IP_DATABASE, self.__VALID_IP_TABLE_NAME).pull(
-                re_try_times=self.__RETRY_TIMES)
-            logging.info(u"ProxyIP-Validation:完成第{}次校验，当前有效IP数：{}".format(
-                count, len(ips)))
-            logging.info(u"ProxyIP-Validation:进入休眠：{} 秒".format(sleep))
+            ips = model.ProxyIp.select().where(model.ProxyIp.status == 1)
+            logging.info(u"{}:完成第{}次校验，当前有效IP数：{}".format(
+                moduleName, count, len(ips)))
+            logging.info(u"{}:进入休眠：{} 秒".format(moduleName, sleep))
             time.sleep(sleep)
 
     def run(self):
         '''启动程序'''
-        p1 = Process(target=self.multiple_filter)
-        p2 = Process(target=self.multiple_validation)
+        p1 = Process(target=self.multiple_validation, kwargs={'is_filter': True})
+        p2 = Process(target=self.multiple_validation, kwargs={'is_filter': False, 'sleep': 60})
         p1.start()
         p2.start()
         p1.join()
@@ -467,12 +464,14 @@ def main():
     # 初始化
     crawl = Crawl()
     validation = Validation()
+  
+    p2 = Process(target=validation.run)
     p1 = Process(target=crawl.run)
-    # p2 = Process(target=validation.run)
+
+    p2.start()
     p1.start()
-    # p2.start()
+    p2.join()
     p1.join()
-    # p2.join()
 
 
 if __name__ == "__main__":
