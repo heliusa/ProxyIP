@@ -151,11 +151,11 @@ class Crawl(object):
 
                 fields = {
                     'xici': {
-                        'ip' : 1,
-                        'port': 2,
-                        'address': 3,
-                        'source_type': 4,
-                        'source_protocol': 5
+                        'ip' : 0,
+                        'port': 1,
+                        'address': 2,
+                        'source_type': 3,
+                        'source_protocol': 4
                     },
                     'kuaidaili': {
                         'ip' : 0,
