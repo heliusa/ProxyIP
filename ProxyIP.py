@@ -271,7 +271,7 @@ class Crawl(object):
             try:
                 model.ProxyIp.insert(**ip).upsert().execute()
             except:
-                logging.error("crawl save error: ")
+                logging.error("crawl save error: " + proxyItem.url)
                 logging.error(ip)
         # if len(ipList) == 1:
         #     model.ProxyIp.insert(**ipList).upsert().execute()
@@ -442,6 +442,7 @@ class Validation(object):
                             moduleName,cnt, len(IPs), cnt / float(len(IPs)) * 100))
                     th = threading.Thread(
                         target=self.__validation, args=(IPs[cnt], is_filter, moduleName))
+                    th.setDaemon(True)
                     th.start()
                     time.sleep(2 * random.random())
                     pool.append(th)
