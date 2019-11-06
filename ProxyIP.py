@@ -102,6 +102,7 @@ class Crawl(object):
 
     def __crawl(self, url, headers, proxies=False, re_conn_times=3):
         '''爬取url'''
+        newProxies = proxies
         for cnt in range(re_conn_times):
             try:
                 if not proxies:
@@ -109,13 +110,13 @@ class Crawl(object):
                         url=url, headers=headers, timeout=5)
                 else:
                     response = requests.get(
-                        url=url, headers=headers, proxies=proxies, timeout=5)
+                        url=url, headers=headers, proxies=newProxies, timeout=5)
                 break
             except Exception:
                 response = None
                 if proxies:
                     #发生异常的时候，切换代理
-                    proxies = self.__proxies()
+                    newProxies = self.__proxies()
                 continue
         if response is None:
             logging.error(u"ProxyIP-Crawl:请求url出错：%s" % url)
