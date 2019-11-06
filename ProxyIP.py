@@ -426,7 +426,7 @@ class Validation(object):
 
     def multiple_validation(self, is_filter = False, thread_num=10, sleep=15 * 60):
         '''定时校验有效IP池里的IP，无效的删除'''
-        logging.info("is_filter:" + str(is_filter))
+        logging.info("is_filter:" + str(is_filter) + ", sleep: "  + str(sleep))
         count = 0
         while True:
             if is_filter:
