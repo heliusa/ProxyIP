@@ -329,7 +329,7 @@ class Validation(object):
     '''校验IP有效性'''
 
     def __init__(self):
-        self.__URL = "http://172.22.39.108:33005/get"
+        self.__URL = "http://106.14.179.179:23005/get"
         self.__RETRY_TIMES = 10  # 数据库访问重试次数
 
     def __check_ip_anonumous(self, ip):
