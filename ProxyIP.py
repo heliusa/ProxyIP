@@ -353,7 +353,7 @@ class Validation(object):
         if is_filter:
             re_conn_time = 2
         else:
-            is_filter = 5
+            re_conn_time = 5
 
         logging.info(u"{}:校验IP地址有效性：{}".format(moduleName, IP))
         proxies = ip.getProxies()
