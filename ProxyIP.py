@@ -329,7 +329,7 @@ class Validation(object):
     '''校验IP有效性'''
 
     def __init__(self):
-        self.__URL = "http://106.14.179.179:23005/get"
+        self.__URL = "http://106.14.179.179/httpbin/get"
         self.__RETRY_TIMES = 10  # 数据库访问重试次数
 
     def __check_ip_anonumous(self, ip):
@@ -356,7 +356,7 @@ class Validation(object):
             re_conn_time = 5
 
         logging.info(u"{}:校验IP地址有效性：{}".format(moduleName, IP))
-        proxies = ip.getProxies()
+        proxies =  ip.getProxies()
         headers = FakeUserAgent().random_headers()
         for i in range(re_conn_time):
             try:
@@ -372,6 +372,10 @@ class Validation(object):
                         continue
 
                     content = json.loads(response.content)
+
+                    if not content:
+                        continue
+                    
                     if content['headers'].has_key('Cdn-Src-Ip'):
                         metadata.update({u'type': '普通'}) #还不知道怎么判断透明和普通匿名代理
                     else:
@@ -434,7 +438,7 @@ class Validation(object):
                 IPs = model.ProxyIp.select().where(model.ProxyIp.status == 0)
             else:
                 moduleName = 'ProxyIP-Validation'
-                IPs = model.ProxyIp.select().where(model.ProxyIp.status == 1 or (model.ProxyIp.status == 3 and model.ProxyIp.fail < 50))
+                IPs = model.ProxyIp.select().where((model.ProxyIp.status == 1) | ((model.ProxyIp.status == 3) & (model.ProxyIp.fail < 50)))
                 
             count += 1
             logging.info(u"{}:第{}次校验，IP数：{}".format(
