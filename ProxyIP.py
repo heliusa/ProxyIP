@@ -16,11 +16,16 @@ import threading
 from multiprocessing import Process
 from database import IP_Pool
 from UA import FakeUserAgent
-import logging
 import model
 from macpath import split
 import datetime
 import json
+from peewee import fn
+from api import index
+
+from util.log import Log
+
+logging = Log()
 
 class ProxyItem(object):
     def __init__(self, channel, url):
@@ -94,7 +99,7 @@ class Crawl(object):
 
     def __proxies(self):
         '''构造代理IP,需要提供代理IP保存的数据库名称和表名'''
-        ip = model.ProxyIp.select().where(model.ProxyIp.status == 1).order_by('random()').limit(1).get()
+        ip = model.ProxyIp.select().where(model.ProxyIp.status == 1).order_by(fn.Rand()).limit(1).get()
         if ip:
             return ip.getProxies()
         else:
@@ -478,15 +483,17 @@ def main():
     # 初始化
     crawl = Crawl(proxy_flag=True)
     validation = Validation()
-  
+    
+    p0 = Process(target=index.run)
     p2 = Process(target=validation.run)
     p1 = Process(target=crawl.run)
-
+    
+    p0.start()
     p2.start()
     p1.start()
+    p0.join()
     p2.join()
     p1.join()
-
 
 if __name__ == "__main__":
     # Crawl().run()

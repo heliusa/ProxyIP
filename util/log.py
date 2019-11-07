@@ -2,9 +2,19 @@
 import datetime
 import logging
 from stack import Stack
+import time
+from config import settings
 
 logging.basicConfig(
-    format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+    format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO, filename=settings.LOG_PATH + time.strftime('%Y-%m-%d') +'.log', filemode='a')
+
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+console.setFormatter(formatter)
+
+logger = logging.getLogger()
+logger.addHandler(console)
 
 class Log(object):
     
@@ -20,8 +30,8 @@ class Log(object):
         
         if not self.stack.is_empty():
             starttime = self.stack.pop()
-            logging.info("time: %s", starttime)
-            logging.info("Run time: %s", endtime - starttime)
+            logger.info("time: %s", starttime)
+            logger.info("Run time: %s", endtime - starttime)
 
         return self;
 
@@ -30,22 +40,22 @@ class Log(object):
         return self;
 
     def info(self, msg, *args, **kwargs):
-        logging.info(msg, *args, **kwargs)
+        logger.info(msg, *args, **kwargs)
         return self;
 
     def warning(self, msg, *args, **kwargs):
-        logging.warning(msg, *args, **kwargs)
+        logger.warning(msg, *args, **kwargs)
         return self;
 
     def error(self, msg, *args, **kwargs):
-        logging.error(msg, *args, **kwargs)
+        logger.error(msg, *args, **kwargs)
         return self;
 
     def debug(self, msg, *args, **kwargs):
-        logging.debug(msg, *args, **kwargs)
+        logger.debug(msg, *args, **kwargs)
         return self;
 
     def log_progress(self, function, address, page, total):
-        logging.info("Progress: %s %s: current page %d total pages %d" %
+        logger.info("Progress: %s %s: current page %d total pages %d" %
                 (function, address, page, total))
         return self;

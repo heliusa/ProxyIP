@@ -10,3 +10,5 @@ pyparsing==2.2.0
 requests==2.20.0
 six==1.10.0
 pypinyin==0.35.4
+Flask==0.12
+bson==0.5.8
