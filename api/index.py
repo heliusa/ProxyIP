@@ -46,14 +46,21 @@ def index():
 
 @app.route('/get/')
 def get():
-    proxy = model.ProxyIp.select().where(model.ProxyIp.status == 1).order_by(fn.Rand()).limit(1).get()
+    speed = request.args.get('speed')
+    query =  model.ProxyIp.select().where(model.ProxyIp.status == 1)
+    if speed: 
+        speed = int(speed)
+        query = query.where(model.ProxyIp.speed < speed)
+    
+    proxy = query.order_by(fn.Rand()).limit(1).first()
         # if ip:
         #     return ip.getProxies()
         # else:
         #     return False
     if proxy: 
         return proxy.getProxies()
-    return 'no proxy!'
+        
+    return { "code" : 1, "msg": 'no proxy!'}
 
 
 @app.route('/refresh/')
